@@ -181,6 +181,20 @@ h2{margin:0;font-size:17px;font-weight:700}
 @keyframes aim{from{transform:translateY(-28px)}to{transform:translateY(28px)}}
 .note{margin:10px 0 0;padding:10px 12px;border-radius:12px;background:var(--acc-soft);font-size:14px;font-weight:500}
 .tip svg.i{width:15px;height:15px;vertical-align:-3px}
+.tuto{position:fixed;inset:0;z-index:40;background:var(--bg);display:none;flex-direction:column;overflow:hidden;padding:calc(env(safe-area-inset-top) + 8px) 0 calc(env(safe-area-inset-bottom) + 18px)}
+.tuto.open{display:flex;animation:fade .25s}
+.tuto .skip{align-self:flex-end;margin-right:12px;min-height:44px;padding:0 12px;color:var(--mute);font-weight:600}
+.tslides{flex:1;display:flex;transition:transform .35s cubic-bezier(.2,.8,.2,1);min-height:0}
+.tslide{flex:0 0 100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 30px;max-width:100%;overflow-y:auto}
+.tbig{width:132px;height:132px;border-radius:38px;display:flex;align-items:center;justify-content:center;font-size:70px;margin-bottom:28px}
+.tslide h2{font-size:24px;letter-spacing:-.02em;margin-bottom:10px;max-width:420px}
+.tslide p{margin:0;color:var(--mute);font-size:16px;line-height:1.5;max-width:420px}
+.tmini{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;margin-top:22px;font-weight:600;font-size:14px;color:var(--mute)}
+.tfoot{display:flex;flex-direction:column;gap:18px;align-items:center;padding:0 22px;max-width:560px;width:100%;margin:0 auto}
+.dots{display:flex;gap:2px}
+.dots button{width:22px;height:22px;display:flex;align-items:center;justify-content:center}
+.dots button::after{content:"";width:8px;height:8px;border-radius:4px;background:var(--fieldline);transition:.25s}
+.dots button.on::after{width:22px;background:var(--acc)}
 .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 92px);transform:translate(-50%,20px);opacity:0;pointer-events:none;background:#1B1F1C;color:#fff;border-radius:14px;padding:0 6px 0 14px;min-height:46px;display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;transition:.25s;z-index:30;max-width:calc(100% - 36px);box-shadow:0 8px 24px rgba(0,0,0,.2)}
 .toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
 .toast svg.i{color:#5EEAD4;width:18px;height:18px}
@@ -203,6 +217,11 @@ h2{margin:0;font-size:17px;font-weight:700}
 <div class="sheet" id="sheet"><div class="bg" data-a="closesheet"></div><div class="panel" id="sheetpanel"></div></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <input type="file" id="importfile" accept="application/json,.json" hidden>
+<div class="tuto" id="tuto" role="dialog" aria-modal="true" aria-label="Comment ça marche">
+  <button class="skip" data-a="tutoend">Passer</button>
+  <div class="tslides" id="tslides"></div>
+  <div class="tfoot"><div class="dots" id="tdots"></div><button class="btn pri" id="tnext" data-a="tutonext">Suivant</button></div>
+</div>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
@@ -656,6 +675,7 @@ function renderSettings(){
     <div class="boxhead"><span class="bi" style="background:var(--chip);color:var(--mute)">${ic('db')}</span><div><h2>Mes données</h2><p>Tout est gardé sur ce téléphone. Fais une sauvegarde de temps en temps.</p></div></div>
     <div class="g2"><button class="btn ghost" data-a="export">${ic('dl')}Sauvegarder</button><button class="btn ghost" data-a="import">${ic('ul')}Restaurer</button></div>
   </section>
+  <button class="btn ghost" style="margin-top:12px" data-a="tuto">🎓 Revoir le tuto</button>
   <p class="foot">🍃 Mes calories · les valeurs sont des estimations, pas un avis médical.</p>`;
   document.querySelectorAll('[data-p]').forEach(inp => inp.addEventListener('input', e => { S.profile[e.target.dataset.p] = e.target.value; save(); renderCalc(); }));
   renderCalc();
@@ -760,7 +780,11 @@ const A = {
   sex: b => { S.profile.sex = b.dataset.s; save(); document.querySelectorAll('[data-a="sex"]').forEach(x => x.classList.toggle('on', x === b)); renderCalc(); },
   usecalc: b => { S.base = +b.dataset.v; save(); $('#base').value = S.base; toast(`Base réglée sur ${fmt(S.base)} kcal`); },
   export: exportData,
-  import: () => $('#importfile').click()
+  import: () => $('#importfile').click(),
+  tuto: () => openTuto(),
+  tutonext: () => tStep < TUTO.length - 1 ? showStep(tStep + 1) : endTuto(),
+  tutoend: () => endTuto(),
+  tdot: b => showStep(+b.dataset.i)
 };
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-a]'); if (!b || b.disabled) return;
@@ -774,7 +798,48 @@ document.addEventListener('visibilitychange', () => {
   if (t !== seenToday) { if (cur === seenToday) cur = t; seenToday = t; if (view === 'today') renderToday(); }
 });
 
+// ---------- Tuto ----------
+const TUTO = [
+  {e:'👋', bg:'var(--acc-soft)', t:'Bienvenue dans Mes calories', p:'Tu notes ce que tu manges et ton sport. L’appli calcule si tu es en déficit ou en surplus. Tout reste sur ton téléphone.'},
+  {e:'🎯', bg:'var(--base-soft)', t:'D’abord : ta dépense de base', p:'C’est ce que ton corps brûle dans la journée, même sans sport. Tu la règles une seule fois dans Réglages (icône en haut à droite). Si tu ne la connais pas, l’appli la calcule avec ton âge, ta taille et ton poids.',
+   x:`<div class="tmini"><span class="ib" style="width:40px;height:40px">${ic('sliders')}</span><span>Réglages</span></div>`},
+  {e:'🍽️', bg:'var(--eat-soft)', t:'Ajouter ce que tu manges', p:'Appuie sur « Aliment », cherche ou choisis dans la liste, tape les grammes et le moment de la journée. Les calories sont calculées toutes seules.',
+   x:`<div class="tmini"><span class="chip on">${ic('plus')}Aliment</span><span class="chip">150 g</span><span class="chip">🍽️ Midi</span></div>`},
+  {e:'🌴', bg:'var(--acc-soft)', t:'Les plats d’ici sont dedans', p:'Colombo, court-bouillon, dachine, igname, jus de goyave… Utilise les onglets pour trier. Un aliment manque ? « Nouvel aliment » pour le créer. Le crayon pour corriger une valeur.',
+   x:`<div class="tmini"><span class="chip">🌴 Pays</span><span class="chip">🍲 Plats créoles</span><span class="chip">🥤 Boissons</span></div>`},
+  {e:'🛒', bg:'var(--chip)', t:'Scanner un produit', p:'Le bouton vert à côté de la recherche ouvre la caméra. Vise le code-barres : le nom et les calories se remplissent. Vérifie avec l’étiquette puis enregistre. La prochaine fois, il sera reconnu tout de suite.',
+   x:`<div class="tmini"><span class="scan" style="width:44px;height:44px">${ic('barcode')}</span></div>`},
+  {e:'🔥', bg:'var(--sport-soft)', t:'Ton sport', p:'Appuie sur « Sport », choisis l’activité et tape les calories affichées par ta montre ou l’appareil de la salle.'},
+  {e:'📊', bg:'var(--acc-soft)', t:'Ton bilan du jour', p:'En haut de l’écran : ce que tu as mangé moins ce que tu as dépensé (base + sport). Vert = déficit, orange = surplus, bleu = équilibre. Les flèches permettent de revoir les jours d’avant.',
+   x:`<div class="tmini"><span class="pill def">${ic('down')}Déficit</span><span class="pill sur">${ic('up')}Surplus</span><span class="pill eq">${ic('equal')}Équilibre</span></div>`},
+  {e:'💾', bg:'var(--base-soft)', t:'Pense à sauvegarder', p:'Tes données sont seulement sur ce téléphone. De temps en temps, fais « Sauvegarder » dans Réglages et garde le fichier (Fichiers, iCloud, mail…). Tu pourras tout restaurer si tu changes de téléphone.'}
+];
+let tStep = 0, tx0 = null;
+function openTuto(){
+  $('#tslides').innerHTML = TUTO.map(s => `<div class="tslide"><div class="tbig" style="background:${s.bg}">${s.e}</div><h2>${s.t}</h2><p>${s.p}</p>${s.x || ''}</div>`).join('');
+  $('#tdots').innerHTML = TUTO.map((_, i) => `<button data-a="tdot" data-i="${i}" aria-label="Étape ${i+1}"></button>`).join('');
+  $('#tuto').classList.add('open'); showStep(0);
+}
+function showStep(i){
+  tStep = i;
+  $('#tslides').style.transform = `translateX(${-100 * i}%)`;
+  document.querySelectorAll('#tdots button').forEach((d, j) => d.classList.toggle('on', j === i));
+  $('#tnext').textContent = i === TUTO.length - 1 ? (S.base ? 'C’est parti !' : 'Régler ma dépense de base') : 'Suivant';
+}
+function endTuto(){
+  $('#tuto').classList.remove('open');
+  if (!S.tutoSeen) { S.tutoSeen = true; save(); }
+  if (!S.base) go('settings');
+}
+$('#tuto').addEventListener('touchstart', e => { tx0 = e.touches[0].clientX; }, {passive:true});
+$('#tuto').addEventListener('touchend', e => {
+  if (tx0 === null) return; const dx = e.changedTouches[0].clientX - tx0; tx0 = null;
+  if (dx < -50 && tStep < TUTO.length - 1) showStep(tStep + 1);
+  if (dx > 50 && tStep > 0) showStep(tStep - 1);
+});
+
 go('today');
+if (!S.tutoSeen) openTuto();
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>

@@ -1,5 +1,5 @@
 // Garde l'appli disponible hors ligne. Change la version pour forcer une mise à jour.
-const CACHE = 'mes-calories-v2';
+const CACHE = 'mes-calories-v3';
 const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './zxing.min.js'];
 
 self.addEventListener('install', e => {
