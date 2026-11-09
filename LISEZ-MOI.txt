@@ -1,0 +1,15 @@
+MES CALORIES — mise en ligne (gratuite, avec GitHub Pages)
+
+1. Dézippe ce dossier « mes-calories » sur ton ordinateur.
+2. Ouvre GitHub Desktop : File > Add local repository > choisis le dossier « mes-calories » > clique « create a repository » > Create repository.
+3. Clique « Publish repository », DÉCOCHE « Keep this code private », puis Publish.
+4. Sur github.com, ouvre le dépôt « mes-calories » > Settings > Pages.
+5. Dans « Branch », choisis « main » et « / (root) », puis Save.
+6. Attends 1 à 2 minutes : l'appli est en ligne sur https://yoshilwsn.github.io/mes-calories/
+7. Envoie ce lien à ta sœur. Sur son iPhone, elle l'ouvre dans Safari.
+8. Elle appuie sur Partager > « Sur l'écran d'accueil » > Ajouter.
+9. Elle ouvre l'appli depuis l'écran d'accueil > Réglages (icône en haut à droite) > règle sa dépense de base.
+10. C'est prêt : bouton « Aliment » pour ce qu'elle mange, « Sport » pour ses séances.
+
+Pour une future mise à jour : remplace les fichiers du dossier, puis Commit + Push dans GitHub Desktop.
+Ses données restent sur son téléphone : bouton « Sauvegarder » dans Réglages de temps en temps.
